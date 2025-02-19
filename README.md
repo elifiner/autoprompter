@@ -2,6 +2,8 @@
 
 A web-based teleprompter application that tracks speech using the microphone and highlights words as they are being read. Built with Python, Flask, and AssemblyAI for real-time speech recognition.
 
+Note: Server needs to run locally and have access to the microphone.
+
 ## Features
 
 - Real-time speech recognition
