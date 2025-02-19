@@ -49,8 +49,8 @@ def handle_real_time_transcript(transcript, session_id):
     print(f"[DEBUG] Received transcript for session {session_id}: {transcript.text}")
     
     # Get the words from the transcript and script
-    transcript_words = transcript.text.lower().split()
-    script_words = [word.lower() for word in scripts[session_id]]
+    transcript_words = [word.lower().strip('.,!?') for word in transcript.text.split()]
+    script_words = [word.lower().strip('.,!?') for word in scripts[session_id]]
     
     print(f"[DEBUG] Transcript words: {transcript_words}")
     print(f"[DEBUG] Script words: {script_words}")
@@ -58,18 +58,35 @@ def handle_real_time_transcript(transcript, session_id):
     if not transcript_words:
         print("[DEBUG] No words in transcript")
         return
-        
-    # Get the last word from the transcript
-    last_word = transcript_words[-1]
-    print(f"[DEBUG] Looking for match for last word: '{last_word}'")
+
+    # Look for the longest matching sequence from the end of the transcript
+    max_context_length = 3  # Number of words to match for context
+    context_length = min(len(transcript_words), max_context_length)
     
-    # Find matching words in the script
-    for i, script_word in enumerate(script_words):
-        print(f"[DEBUG] Comparing '{last_word}' with script word '{script_word}'")
-        if last_word == script_word:
-            print(f"[DEBUG] Found match at index {i}: '{script_word}'")
-            socketio.emit('word_recognized', {'word_index': i}, room=session_id)
-            break
+    while context_length > 0:
+        # Get the last N words from the transcript
+        last_words = transcript_words[-context_length:]
+        print(f"[DEBUG] Trying to match last {context_length} words: {last_words}")
+        
+        # Look for this sequence in the script
+        for i in range(len(script_words) - context_length + 1):
+            script_sequence = script_words[i:i + context_length]
+            print(f"[DEBUG] Comparing with script sequence at index {i}: {script_sequence}")
+            
+            if last_words == script_sequence:
+                # Found a match - the next word should be highlighted
+                next_word_index = i + context_length
+                print(f"[DEBUG] Found matching sequence at index {i}")
+                print(f"[DEBUG] Next word index: {next_word_index}")
+                
+                if next_word_index < len(script_words):
+                    print(f"[DEBUG] Highlighting word at index {next_word_index}: '{script_words[next_word_index]}'")
+                    socketio.emit('word_recognized', {'word_index': next_word_index}, room=session_id)
+                return
+                
+        # If no match found with current context length, try with one word less
+        context_length -= 1
+        print(f"[DEBUG] No match found, reducing context length to {context_length}")
 
 @socketio.on('connect')
 def handle_connect():
