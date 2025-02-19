@@ -17,9 +17,10 @@ socketio = SocketIO(app, cors_allowed_origins="*", manage_session=False)
 # Initialize AssemblyAI
 aai.settings.api_key = os.getenv('ASSEMBLYAI_API_KEY')
 
-# Store scripts and transcriber instances
+# Store scripts, transcribers, and reading positions
 scripts = {}
 transcribers = {}
+current_positions = {}  # Track current reading position for each session
 current_sid = None
 
 @app.route('/')
@@ -32,13 +33,14 @@ def upload_script():
     session_id = current_sid if current_sid else 'default'
     words = script.split()
     scripts[session_id] = words
+    current_positions[session_id] = 0  # Initialize reading position
     return jsonify({'status': 'success', 'session_id': session_id})
 
 def handle_real_time_transcript(transcript, session_id):
-    """Handle real-time transcript results"""
+    """Handle real-time transcript results using sequential reading assumption"""
     if not transcript.text or session_id not in scripts:
         return
-        
+
     # Get the words from the transcript and script
     transcript_words = [word.lower().strip('.,!?') for word in transcript.text.split()]
     script_words = [word.lower().strip('.,!?') for word in scripts[session_id]]
@@ -46,28 +48,42 @@ def handle_real_time_transcript(transcript, session_id):
     if not transcript_words:
         return
 
-    # Look for the longest matching sequence from the end of the transcript
-    max_context_length = 3  # Number of words to match for context
-    context_length = min(len(transcript_words), max_context_length)
+    current_pos = current_positions.get(session_id, 0)
     
-    while context_length > 0:
-        # Get the last N words from the transcript
-        last_words = transcript_words[-context_length:]
-        
-        # Look for this sequence in the script
-        for i in range(len(script_words) - context_length + 1):
-            script_sequence = script_words[i:i + context_length]
-            
-            if last_words == script_sequence:
-                # Found a match - the next word should be highlighted
-                next_word_index = i + context_length
-                
-                if next_word_index < len(script_words):
-                    socketio.emit('word_recognized', {'word_index': next_word_index}, room=session_id)
+    # Define the look-ahead window
+    LOOK_AHEAD = 15  # Number of words to look ahead
+    search_start = max(0, current_pos - 2)  # Allow small backtrack
+    search_end = min(len(script_words), current_pos + LOOK_AHEAD)
+    
+    # Get the last spoken word
+    last_word = transcript_words[-1].lower().strip('.,!?')
+    
+    # First, try exact match within window
+    for i in range(search_start, search_end):
+        if script_words[i] == last_word:
+            # Found exact match
+            current_positions[session_id] = i + 1
+            socketio.emit('word_recognized', {'word_index': i + 1}, room=session_id)
+            return
+    
+    # If no exact match, try fuzzy match (first 3 chars match)
+    if len(last_word) >= 3:
+        for i in range(search_start, search_end):
+            if script_words[i].startswith(last_word[:3]):
+                current_positions[session_id] = i + 1
+                socketio.emit('word_recognized', {'word_index': i + 1}, room=session_id)
                 return
-                
-        # If no match found with current context length, try with one word less
-        context_length -= 1
+    
+    # If still no match, try matching two-word sequences
+    if len(transcript_words) >= 2:
+        last_two_words = ' '.join(transcript_words[-2:]).lower()
+        script_pairs = [f"{script_words[i]} {script_words[i+1]}" for i in range(search_start, search_end-1)]
+        
+        for i, pair in enumerate(script_pairs):
+            if pair == last_two_words:
+                current_positions[session_id] = search_start + i + 2
+                socketio.emit('word_recognized', {'word_index': search_start + i + 2}, room=session_id)
+                return
 
 @socketio.on('connect')
 def handle_connect():
@@ -83,6 +99,8 @@ def handle_disconnect():
         del transcribers[session_id]
     if session_id in scripts:
         del scripts[session_id]
+    if session_id in current_positions:
+        del current_positions[session_id]
     if current_sid == session_id:
         current_sid = None
 
