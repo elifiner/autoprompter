@@ -1,4 +1,4 @@
-# Smart Teleprompter
+# Auto Teleprompter
 
 A web-based teleprompter application that tracks speech using the microphone and highlights words as they are being read. Built with Python, Flask, and AssemblyAI for real-time speech recognition.
 
@@ -15,6 +15,7 @@ A web-based teleprompter application that tracks speech using the microphone and
 - Python 3.8 or higher
 - pip (Python package manager)
 - An AssemblyAI API key
+- Running the server locally
 
 ## Setup
 
@@ -40,12 +41,12 @@ SECRET_KEY=your-secret-key-here
 python app.py
 ```
 
-5. Open your web browser and navigate to `http://localhost:5000`
+5. Open your web browser and navigate to `http://localhost:8000`
 
 ## Usage
 
 1. Enter or paste your script into the text area
-2. Click "Start Teleprompter" to begin
+2. Click "Start" to begin
 3. Start reading the text
 4. The application will highlight words as you speak them
 5. Click "Stop" when you're finished

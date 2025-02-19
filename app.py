@@ -153,4 +153,4 @@ def handle_audio_data(data):
     pass  # Audio data is handled by AssemblyAI's stream
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True) 
+    socketio.run(app, port=8000) 

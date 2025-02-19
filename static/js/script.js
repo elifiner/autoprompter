@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const textWidthValue = document.getElementById('textWidthValue');
 
     // Initial instructions text
-    const INSTRUCTIONS_TEXT = `Welcome to Smart Teleprompter!
+    const INSTRUCTIONS_TEXT = `Welcome to Auto Teleprompter!
 
 Simply select and replace this text with your script.
 
@@ -23,8 +23,6 @@ Tips:
 Try it now by selecting this text and pasting your script!`;
     
     let isRecording = false;
-    let mediaRecorder = null;
-    let audioStream = null;
 
     function formatText(text, shouldWrapWords = false) {
         // Split into paragraphs, trim each one, and remove empty ones
@@ -64,51 +62,6 @@ Try it now by selecting this text and pasting your script!`;
         teleprompterDisplay.style.width = `${width}px`;
     });
 
-    async function startRecording() {
-        try {
-            audioStream = await navigator.mediaDevices.getUserMedia({ 
-                audio: {
-                    sampleRate: 16000,
-                    channelCount: 1,
-                    echoCancellation: true,
-                    noiseSuppression: true
-                }
-            });
-            
-            mediaRecorder = new MediaRecorder(audioStream);
-            
-            mediaRecorder.ondataavailable = async (event) => {
-                if (event.data.size > 0 && socket.connected) {
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                        const base64Audio = reader.result.split(',')[1];
-                        socket.emit('audio_data', { audio: base64Audio });
-                    };
-                    reader.readAsDataURL(event.data);
-                }
-            };
-
-            mediaRecorder.start(100);
-        } catch (err) {
-            console.error('Error accessing microphone:', err);
-            alert('Error accessing microphone. Please ensure you have granted microphone permissions.');
-            stopRecording();
-        }
-    }
-
-    function stopRecording() {
-        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-            mediaRecorder.stop();
-        }
-        if (audioStream) {
-            audioStream.getTracks().forEach(track => {
-                track.stop();
-            });
-        }
-        mediaRecorder = null;
-        audioStream = null;
-    }
-
     startButton.addEventListener('click', async () => {
         // Get raw text and split into paragraphs, handling any nested structure
         const rawText = teleprompterDisplay.innerText.trim();
@@ -138,7 +91,6 @@ Try it now by selecting this text and pasting your script!`;
             startButton.disabled = true;
             stopButton.disabled = false;
             
-            await startRecording();
             socket.emit('start_recording');
         } catch (error) {
             console.error('Error uploading script:', error);
@@ -158,7 +110,6 @@ Try it now by selecting this text and pasting your script!`;
         const text = teleprompterDisplay.textContent.trim();
         teleprompterDisplay.innerHTML = formatText(text);
         
-        stopRecording();
         socket.emit('stop_recording');
     });
 
@@ -194,7 +145,6 @@ Try it now by selecting this text and pasting your script!`;
     socket.on('transcription_error', (data) => {
         console.error('Transcription error:', data.error);
         alert('Error with transcription service. Please try again.');
-        stopRecording();
         startButton.disabled = false;
         stopButton.disabled = true;
         teleprompterDisplay.contentEditable = 'true';
@@ -206,7 +156,6 @@ Try it now by selecting this text and pasting your script!`;
     });
 
     socket.on('disconnect', () => {
-        stopRecording();
         startButton.disabled = false;
         stopButton.disabled = true;
         teleprompterDisplay.contentEditable = 'true';
