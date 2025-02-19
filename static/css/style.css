@@ -1,0 +1,31 @@
+.teleprompter-container {
+    background-color: #000;
+    color: #fff;
+    padding: 2rem;
+    border-radius: 8px;
+    font-size: 1.5rem;
+    line-height: 1.6;
+    min-height: 300px;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.word {
+    display: inline-block;
+    margin-right: 5px;
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+.current-word {
+    background-color: #ffd700;
+    color: #000;
+}
+
+.spoken-word {
+    color: #888;
+}
+
+.upcoming-word {
+    color: #fff;
+} 
