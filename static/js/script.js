@@ -110,7 +110,10 @@ Try it now by selecting this text and pasting your script!`;
     }
 
     startButton.addEventListener('click', async () => {
-        const text = teleprompterDisplay.textContent.trim();
+        // Get raw text and split into paragraphs, handling any nested structure
+        const rawText = teleprompterDisplay.innerText.trim();
+        const text = rawText.split(/\n+/).map(p => p.trim()).filter(p => p).join('\n\n');
+        
         if (!text || text === INSTRUCTIONS_TEXT.trim()) {
             alert('Please replace the instructions with your script first!');
             return;
