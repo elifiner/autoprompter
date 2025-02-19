@@ -1,20 +1,84 @@
-.teleprompter-container {
-    background-color: #000;
-    color: #fff;
-    padding: 2rem;
-    border-radius: 8px;
-    font-size: 1.5rem;
-    line-height: 1.6;
-    min-height: 300px;
-    max-height: 500px;
-    overflow-y: auto;
+/* Full screen layout */
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
 }
 
+.teleprompter-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    background-color: #000;
+}
+
+.teleprompter-container {
+    flex-grow: 1;
+    color: #fff;
+    padding: 2rem;
+    font-size: 40px;
+    line-height: 1.6;
+    overflow-y: auto;
+    outline: none; /* Remove contenteditable outline */
+    word-wrap: break-word; /* Break long words */
+    margin: 0 auto; /* Center the text container */
+    width: 800px; /* Default width */
+    max-width: 100%;
+    transition: all 0.3s ease;
+}
+
+.paragraph {
+    margin-bottom: 1em;
+    padding: 0;
+    display: block; /* Ensure paragraphs are block-level */
+}
+
+.paragraph:last-child {
+    margin-bottom: 0; /* Remove margin from last paragraph */
+}
+
+/* Hide scrollbar but keep functionality */
+.teleprompter-container::-webkit-scrollbar {
+    display: none;
+}
+
+.teleprompter-container {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Control bar at bottom */
+.control-bar {
+    background-color: #1a1a1a;
+    padding: 1rem;
+    border-top: 1px solid #333;
+}
+
+.control-bar button {
+    margin: 0 0.5rem;
+    min-width: 120px;
+}
+
+/* Slider styling */
+.form-range {
+    width: 150px;
+}
+
+.form-range::-webkit-slider-thumb {
+    background: #0d6efd;
+}
+
+.form-range::-moz-range-thumb {
+    background: #0d6efd;
+}
+
+/* Word styling */
 .word {
-    display: inline-block;
-    margin-right: 5px;
-    padding: 2px 4px;
+    display: inline;
+    padding: 0 2px;
     border-radius: 3px;
+    transition: all 0.2s ease;
 }
 
 .current-word {
@@ -23,9 +87,38 @@
 }
 
 .spoken-word {
-    color: #888;
+    color: #666;
 }
 
 .upcoming-word {
     color: #fff;
+}
+
+/* Make text unselectable except when editing */
+.teleprompter-container:not(:focus) {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .control-bar {
+        padding: 0.5rem;
+    }
+    
+    .form-range {
+        width: 100px;
+    }
+    
+    .control-bar button {
+        margin: 0.25rem;
+        min-width: 100px;
+    }
+    
+    .teleprompter-container {
+        width: 100% !important; /* Override any custom width on mobile */
+        padding: 1rem;
+    }
 } 

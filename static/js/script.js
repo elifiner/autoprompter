@@ -1,20 +1,68 @@
 document.addEventListener('DOMContentLoaded', () => {
     const socket = io();
-    const scriptInput = document.getElementById('scriptInput');
+    const teleprompterDisplay = document.getElementById('teleprompterDisplay');
     const startButton = document.getElementById('startButton');
     const stopButton = document.getElementById('stopButton');
-    const teleprompterDisplay = document.getElementById('teleprompterDisplay');
+    const fontSizeSlider = document.getElementById('fontSize');
+    const fontSizeValue = document.getElementById('fontSizeValue');
+    const textWidthSlider = document.getElementById('textWidth');
+    const textWidthValue = document.getElementById('textWidthValue');
+
+    // Initial instructions text
+    const INSTRUCTIONS_TEXT = `Welcome to Smart Teleprompter!
+
+Simply select and replace this text with your script.
+
+Tips:
+• Adjust the font size and width using the sliders below
+• Click 'Start' when ready to begin
+• Speak naturally - the text will automatically scroll
+• The current word will be highlighted in yellow
+• Click 'Stop' when finished
+
+Try it now by selecting this text and pasting your script!`;
     
     let isRecording = false;
     let mediaRecorder = null;
     let audioStream = null;
 
-    function prepareScript(text) {
-        const prepared = text.split(/\s+/).map((word, index) => {
-            return `<span class="word" data-index="${index}">${word}</span>`;
-        }).join(' ');
-        return prepared;
+    function formatText(text, shouldWrapWords = false) {
+        // Split into paragraphs, trim each one, and remove empty ones
+        const paragraphs = text.split(/\n+/).map(p => p.trim()).filter(p => p);
+        
+        const formattedParagraphs = paragraphs.map(paragraph => {
+            if (shouldWrapWords) {
+                // For recording mode: wrap words in spans
+                const words = paragraph.split(/\s+/).map((word, index) => {
+                    return `<span class="word" data-index="${index}">${word}</span>`;
+                }).join(' ');
+                return `<div class="paragraph">${words}</div>`;
+            } else {
+                // For editing mode: just wrap paragraphs
+                return `<div class="paragraph">${paragraph}</div>`;
+            }
+        });
+
+        // Join with newlines and preserve them in HTML
+        return formattedParagraphs.join('\n');
     }
+
+    // Initialize with formatted instructions
+    teleprompterDisplay.innerHTML = formatText(INSTRUCTIONS_TEXT);
+
+    // Handle font size changes
+    fontSizeSlider.addEventListener('input', () => {
+        const size = fontSizeSlider.value;
+        fontSizeValue.textContent = `${size}px`;
+        teleprompterDisplay.style.fontSize = `${size}px`;
+    });
+
+    // Handle width changes
+    textWidthSlider.addEventListener('input', () => {
+        const width = textWidthSlider.value;
+        textWidthValue.textContent = `${width}px`;
+        teleprompterDisplay.style.width = `${width}px`;
+    });
 
     async function startRecording() {
         try {
@@ -31,7 +79,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             mediaRecorder.ondataavailable = async (event) => {
                 if (event.data.size > 0 && socket.connected) {
-                    // Convert blob to base64 and send to server
                     const reader = new FileReader();
                     reader.onload = () => {
                         const base64Audio = reader.result.split(',')[1];
@@ -41,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
 
-            mediaRecorder.start(100); // Collect 100ms of audio at a time
+            mediaRecorder.start(100);
         } catch (err) {
             console.error('Error accessing microphone:', err);
             alert('Error accessing microphone. Please ensure you have granted microphone permissions.');
@@ -63,13 +110,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     startButton.addEventListener('click', async () => {
-        if (!scriptInput.value.trim()) {
-            alert('Please enter some text first!');
+        const text = teleprompterDisplay.textContent.trim();
+        if (!text || text === INSTRUCTIONS_TEXT.trim()) {
+            alert('Please replace the instructions with your script first!');
             return;
         }
 
-        const script = scriptInput.value;
-        teleprompterDisplay.innerHTML = prepareScript(script);
+        // Make teleprompter uneditable during recording
+        teleprompterDisplay.contentEditable = 'false';
+        teleprompterDisplay.innerHTML = formatText(text, true); // true for word wrapping
         
         // Send script to backend
         try {
@@ -78,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ script: script })
+                body: JSON.stringify({ script: text })
             });
             await response.json();
 
@@ -91,6 +140,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Error uploading script:', error);
             alert('Error uploading script. Please try again.');
+            teleprompterDisplay.contentEditable = 'true';
+            teleprompterDisplay.innerHTML = formatText(text); // Restore original formatting
         }
     });
 
@@ -98,6 +149,11 @@ document.addEventListener('DOMContentLoaded', () => {
         isRecording = false;
         startButton.disabled = false;
         stopButton.disabled = true;
+        teleprompterDisplay.contentEditable = 'true';
+        
+        // Restore original formatting without word wrapping
+        const text = teleprompterDisplay.textContent.trim();
+        teleprompterDisplay.innerHTML = formatText(text);
         
         stopRecording();
         socket.emit('stop_recording');
@@ -115,7 +171,15 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (index === currentIndex) {
                 word.classList.add('current-word');
                 word.classList.remove('spoken-word', 'upcoming-word');
-                word.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // Scroll the current word to top with offset
+                const wordTop = word.offsetTop;
+                const containerHeight = teleprompterDisplay.clientHeight;
+                const scrollPosition = wordTop - 100; // 100px from top
+                teleprompterDisplay.scrollTo({
+                    top: scrollPosition,
+                    behavior: 'smooth'
+                });
             } else {
                 word.classList.add('upcoming-word');
                 word.classList.remove('spoken-word', 'current-word');
@@ -130,6 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
         stopRecording();
         startButton.disabled = false;
         stopButton.disabled = true;
+        teleprompterDisplay.contentEditable = 'true';
     });
 
     // Handle connection events
@@ -141,5 +206,6 @@ document.addEventListener('DOMContentLoaded', () => {
         stopRecording();
         startButton.disabled = false;
         stopButton.disabled = true;
+        teleprompterDisplay.contentEditable = 'true';
     });
 }); 
