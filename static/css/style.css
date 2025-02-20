@@ -154,8 +154,9 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .current-word {
-    background-color: #ffd700;
-    color: #000;
+    color: #666;
+    /* background-color: #ffd700; */
+    /* color: #000; */
 }
 
 .spoken-word {

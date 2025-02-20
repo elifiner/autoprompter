@@ -24,6 +24,71 @@ Try it now by selecting this text and pasting your script!`;
     
     let isRecording = false;
 
+    // Load saved state from local storage
+    function loadSavedState() {
+        const savedText = localStorage.getItem('teleprompterText');
+        const savedFontSize = localStorage.getItem('teleprompterFontSize');
+        const savedTextWidth = localStorage.getItem('teleprompterTextWidth');
+
+        if (savedText && savedText !== INSTRUCTIONS_TEXT) {
+            teleprompterDisplay.innerHTML = formatText(savedText);
+        } else {
+            teleprompterDisplay.innerHTML = formatText(INSTRUCTIONS_TEXT);
+        }
+
+        if (savedFontSize) {
+            fontSizeSlider.value = savedFontSize;
+            fontSizeValue.textContent = `${savedFontSize}px`;
+            teleprompterDisplay.style.fontSize = `${savedFontSize}px`;
+        }
+
+        if (savedTextWidth) {
+            textWidthSlider.value = savedTextWidth;
+            textWidthValue.textContent = `${savedTextWidth}px`;
+            teleprompterDisplay.style.width = `${savedTextWidth}px`;
+        }
+    }
+
+    // Save current state to local storage
+    function saveState() {
+        const currentText = teleprompterDisplay.innerText.trim();
+        if (currentText && currentText !== INSTRUCTIONS_TEXT.trim()) {
+            localStorage.setItem('teleprompterText', currentText);
+        }
+        localStorage.setItem('teleprompterFontSize', fontSizeSlider.value);
+        localStorage.setItem('teleprompterTextWidth', textWidthSlider.value);
+    }
+
+    // Load saved state on startup
+    loadSavedState();
+
+    // Save state when text changes
+    teleprompterDisplay.addEventListener('input', saveState);
+
+    // Handle paste events to remove formatting
+    teleprompterDisplay.addEventListener('paste', (e) => {
+        // Prevent the default paste behavior
+        e.preventDefault();
+        
+        // Get plain text from clipboard
+        const text = e.clipboardData.getData('text/plain');
+        
+        // Insert the plain text at cursor position
+        const selection = window.getSelection();
+        if (selection.rangeCount) {
+            selection.deleteFromDocument();
+            const range = selection.getRangeAt(0);
+            range.insertNode(document.createTextNode(text));
+            selection.collapseToEnd();
+        } else {
+            // If no selection, append to end
+            teleprompterDisplay.innerText += text;
+        }
+        
+        // Save the new state
+        saveState();
+    });
+
     function formatText(text, shouldWrapWords = false) {
         // Split into paragraphs, trim each one, and remove empty ones
         const paragraphs = text.split(/\n+/).map(p => p.trim()).filter(p => p);
@@ -45,14 +110,12 @@ Try it now by selecting this text and pasting your script!`;
         return formattedParagraphs.join('\n');
     }
 
-    // Initialize with formatted instructions
-    teleprompterDisplay.innerHTML = formatText(INSTRUCTIONS_TEXT);
-
     // Handle font size changes
     fontSizeSlider.addEventListener('input', () => {
         const size = fontSizeSlider.value;
         fontSizeValue.textContent = `${size}px`;
         teleprompterDisplay.style.fontSize = `${size}px`;
+        saveState();
     });
 
     // Handle width changes
@@ -60,6 +123,7 @@ Try it now by selecting this text and pasting your script!`;
         const width = textWidthSlider.value;
         textWidthValue.textContent = `${width}px`;
         teleprompterDisplay.style.width = `${width}px`;
+        saveState();
     });
 
     startButton.addEventListener('click', async () => {
@@ -76,6 +140,12 @@ Try it now by selecting this text and pasting your script!`;
         teleprompterDisplay.contentEditable = 'false';
         teleprompterDisplay.innerHTML = formatText(text, true); // true for word wrapping
         
+        // Scroll to top when starting
+        teleprompterDisplay.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+
         // Send script to backend
         try {
             const response = await fetch('/upload-script', {

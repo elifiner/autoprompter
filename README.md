@@ -7,8 +7,7 @@ Note: Server needs to run locally and have access to the microphone.
 ## Features
 
 - Real-time speech recognition
-- Automatic word highlighting
-- Smooth text scrolling
+- Automatic scrolling of text
 - Easy-to-use web interface
 - Responsive design
 

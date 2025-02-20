@@ -51,7 +51,8 @@ def handle_real_time_transcript(transcript, session_id):
     current_pos = current_positions.get(session_id, 0)
     
     # Define the look-ahead window
-    LOOK_AHEAD = 15  # Number of words to look ahead
+    LOOK_AHEAD = 5  # Number of words to look ahead
+    SEQUENCE_LENGTH = 3 # Number of words to match
     search_start = max(0, current_pos - 2)  # Allow small backtrack
     search_end = min(len(script_words), current_pos + LOOK_AHEAD)
     
@@ -74,15 +75,15 @@ def handle_real_time_transcript(transcript, session_id):
                 socketio.emit('word_recognized', {'word_index': i + 1}, room=session_id)
                 return
     
-    # If still no match, try matching two-word sequences
-    if len(transcript_words) >= 2:
-        last_two_words = ' '.join(transcript_words[-2:]).lower()
-        script_pairs = [f"{script_words[i]} {script_words[i+1]}" for i in range(search_start, search_end-1)]
+    # If still no match, try matching a sequence
+    if len(transcript_words) >= SEQUENCE_LENGTH:
+        last_three_words = ' '.join(transcript_words[-SEQUENCE_LENGTH:]).lower()
+        script_triplets = [f"{script_words[i]} {script_words[i+1]} {script_words[i+2]}" for i in range(search_start, search_end-SEQUENCE_LENGTH+1)]
         
-        for i, pair in enumerate(script_pairs):
-            if pair == last_two_words:
-                current_positions[session_id] = search_start + i + 2
-                socketio.emit('word_recognized', {'word_index': search_start + i + 2}, room=session_id)
+        for i, triplet in enumerate(script_triplets):
+            if triplet == last_three_words:
+                current_positions[session_id] = search_start + i + SEQUENCE_LENGTH
+                socketio.emit('word_recognized', {'word_index': search_start + i + SEQUENCE_LENGTH}, room=session_id)
                 return
 
 @socketio.on('connect')
